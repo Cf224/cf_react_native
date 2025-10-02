@@ -17,7 +17,7 @@ const completedDays = [
 const startDate = '2025-09-01';
 const endDate = '2025-09-30';
 
-export default function MilkCalendar() {
+export default function  MilkCalendar() {
   const [markedDates, setMarkedDates] = useState({});
 
   useEffect(() => {

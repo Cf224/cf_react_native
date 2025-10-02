@@ -8,7 +8,7 @@ import StaffDashboardTabs from '../components/BottomNav';
 import Subscribe from '../screens/Subscription/subscribe';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import BuyNowScreen from '../screens/Buy/BuyNowscreen';
-import Subscribe from '../screens/Subscription/subscribe';
+
 
 
 // Define Product type (consistent with ProductCard.tsx)
@@ -60,7 +60,7 @@ export default function AppNavigator() {
         <Stack.Screen
         name="Subscribepage"
         component={Subscribe}
-        options={{ title: 'Subscribe' }}
+        options={{ title: 'Subscribepage' }}
       />
       <Stack.Screen
         name="CalendarBill"
