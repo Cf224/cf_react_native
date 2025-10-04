@@ -14,9 +14,14 @@ type Props = {
   navigation: StackNavigationProp<RootStackParamList, 'Subscribe'>;
 };
 
+// Updated volumeOptions with specified quantities
 const volumeOptions: Record<string, string[]> = {
-  milk: ['200 ml', '500 ml', '1 L'],
-  egg: ['1 pc', '6 pcs', '12 pcs', '30 pcs'],
+  milk: ['100ml', '250ml', '500ml', '1L'],
+  eggs: ['10 pcs'],
+  live_chicken: ['1kg', '2kg', '5kg'],
+  cutted_chicken: ['1kg', '2kg', '5kg'],
+  cheese: [], // No specific quantities for cheese
+  yogurt: [], // No specific quantities for yogurt
 };
 
 export default function Subscribe({ route, navigation }: Props) {
@@ -71,7 +76,10 @@ export default function Subscribe({ route, navigation }: Props) {
           source={{ uri: 'https://via.placeholder.com/100?text=Milk+Logo' }}
           style={styles.logo}
         />
-        <Text style={styles.title}>Subscribe to {product.name}</Text>
+        {/* Display product name and selected quantity in title */}
+        <Text style={styles.title}>
+          Subscribe to {product.name} {volume ? `(${volume})` : ''}
+        </Text>
         <Text style={styles.subtitle}>Set your delivery schedule</Text>
 
         <View style={styles.section}>
@@ -138,6 +146,14 @@ export default function Subscribe({ route, navigation }: Props) {
             />
           )}
         </View>
+
+        {/* Dedicated section for displaying selected quantity */}
+        {volume && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Selected Quantity</Text>
+            <Text style={styles.selectedQuantity}>{volume}</Text>
+          </View>
+        )}
 
         <TouchableOpacity
           onPressIn={handleButtonPressIn}
@@ -257,6 +273,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  selectedQuantity: {
+    fontSize: 16,
+    color: '#263238',
+    backgroundColor: '#F5F6F5',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#CFD8DC',
   },
 });
 

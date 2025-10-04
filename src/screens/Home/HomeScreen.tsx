@@ -1,8 +1,20 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Dimensions, Animated, PermissionsAndroid, Platform, ImageSourcePropType } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Dimensions,
+  Animated,
+  PermissionsAndroid,
+  Platform,
+  ImageSourcePropType,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Geolocation from 'react-native-geolocation-service';
-import Geocoder from 'react-native-geocoding';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import MilkCalendar from '../Subscription/SubscribeScreen';
 import CategoryChips from '../../components/CategoryChips';
 import ProductCard from '../../components/ProductCard';
@@ -15,25 +27,28 @@ const adImages = [
   'https://images.unsplash.com/photo-1594470119273-0a6a6d57b2a0?auto=format&fit=crop&w=1350&q=80',
 ];
 
+// Updated categories to include live_chicken and cutted_chicken
 const categories = [
   { key: 'milk', label: 'Milk' },
   { key: 'eggs', label: 'Eggs' },
   { key: 'cheese', label: 'Cheese' },
   { key: 'yogurt', label: 'Yogurt' },
+  { key: 'live_chicken', label: 'Live Chicken' },
+  { key: 'cutted_chicken', label: 'Cutted Chicken' },
   { key: 'all', label: 'All' },
 ];
 
-const products: { id: string; name: string; price: number; category: string; image: ImageSourcePropType }[] = [
-  { id: '1', name: 'Fresh Cow Milk', price: 60, category: 'milk', image: require('../../../src/assets/image/cfmilk.png') }, // Adjust path
-  { id: '2', name: 'Organic Eggs (12)', price: 80, category: 'eggs', image: require('../../../src/assets/image/cfegg.png') },
-  { id: '3', name: 'Cheddar Cheese', price: 150, category: 'cheese', image: 'https://images.unsplash.com/photo-1486297678162-eb4334d94d3f?auto=format&fit=crop&w=300&q=80' },
-  { id: '4', name: 'Greek Yogurt', price: 50, category: 'yogurt', image: 'https://images.unsplash.com/photo-1584270853332-1e7a4d6e4f2a?auto=format&fit=crop&w=300&q=80' },
-  { id: '5', name: 'Buffalo Milk', price: 70, category: 'milk', image: 'https://images.unsplash.com/photo-1550583724-3a43209a7c88?auto=format&fit=crop&w=300&q=80' },
-  { id: '6', name: 'Mozzarella Cheese', price: 200, category: 'cheese', image: 'https://images.unsplash.com/photo-1486297678162-eb4334d94d3f?auto=format&fit=crop&w=300&q=80' },
+// Updated products array with live_chicken and cutted_chicken
+const products: { id: string; name: string; price: number; category: string; image: ImageSourcePropType; type: string }[] = [
+  { id: '1', name: 'Fresh Cow Milk', price: 60, category: 'milk', type: 'milk', image: require('../../../src/assets/image/cfmilk.png') },
+  { id: '2', name: 'Organic Eggs', price: 80, category: 'eggs', type: 'eggs', image: require('../../../src/assets/image/cfegg.png') },
+  { id: '3', name: 'Cheddar Cheese', price: 150, category: 'cheese', type: 'cheese', image: 'https://images.unsplash.com/photo-1486297678162-eb4334d94d3f?auto=format&fit=crop&w=300&q=80' },
+  { id: '4', name: 'Greek Yogurt', price: 50, category: 'yogurt', type: 'yogurt', image: 'https://images.unsplash.com/photo-1584270853332-1e7a4d6e4f2a?auto=format&fit=crop&w=300&q=80' },
+  { id: '5', name: 'Buffalo Milk', price: 70, category: 'milk', type: 'milk', image: 'https://images.unsplash.com/photo-1550583724-3a43209a7c88?auto=format&fit=crop&w=300&q=80' },
+  { id: '6', name: 'Mozzarella Cheese', price: 200, category: 'cheese', type: 'cheese', image: 'https://images.unsplash.com/photo-1486297678162-eb4334d94d3f?auto=format&fit=crop&w=300&q=80' },
+  { id: '7', name: 'Live Chicken', price: 300, category: 'live_chicken', type: 'live_chicken', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=300&q=80' },
+  { id: '8', name: 'Cutted Chicken', price: 250, category: 'cutted_chicken', type: 'cutted_chicken', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=300&q=80' },
 ];
-
-// ✅ Initialize Geocoder (use your own Google Maps API Key)
-Geocoder.init('YOUR_GOOGLE_API_KEY');
 
 export default function HomeScreen({ navigation }: any) {
   const scrollViewRef = useRef<ScrollView>(null);
@@ -64,16 +79,30 @@ export default function HomeScreen({ navigation }: any) {
     return () => clearInterval(interval);
   }, [fadeAnim]);
 
-  // ✅ Ask permission and get current location
   useEffect(() => {
     const requestLocation = async () => {
       try {
+        const cachedAddress = await AsyncStorage.getItem('cachedAddress');
+        if (cachedAddress) {
+          console.log('Using cached address:', cachedAddress);
+          setAddress(cachedAddress);
+          return;
+        }
+
         if (Platform.OS === 'android') {
           const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Location Permission',
+              message: 'This app needs access to your location to show your address.',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Cancel',
+              buttonPositive: 'OK',
+            }
           );
           if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            setAddress('Permission denied');
+            console.log('Location permission denied');
+            setAddress('Location permission denied');
             return;
           }
         }
@@ -81,19 +110,65 @@ export default function HomeScreen({ navigation }: any) {
         Geolocation.getCurrentPosition(
           async (pos) => {
             const { latitude, longitude } = pos.coords;
-            const geo = await Geocoder.from(latitude, longitude);
-            if (geo.results.length > 0) {
-              setAddress(geo.results[0].formatted_address);
+            console.log('Geolocation coordinates:', { latitude, longitude });
+
+            if (!latitude || !longitude) {
+              console.log('Invalid coordinates');
+              setAddress('Invalid location data');
+              return;
             }
+
+            const fetchAddress = async (retries = 3, delay = 1000) => {
+              try {
+                const response = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+                  {
+                    headers: {
+                      'User-Agent': 'CF_Farming_App/1.0 (your.email@example.com)',
+                    },
+                  }
+                );
+
+                if (!response.ok) {
+                  throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Nominatim response:', data);
+
+                if (data && data.address) {
+                  const street = data.address.road || 'Unknown Street';
+                  const city = data.address.city || data.address.town || 'Unknown City';
+                  const formattedAddress = `${street}, ${city}`;
+                  setAddress(formattedAddress);
+                  await AsyncStorage.setItem('cachedAddress', formattedAddress);
+                  console.log('Address cached:', formattedAddress);
+                } else {
+                  setAddress('No address found');
+                  console.log('No address data in response');
+                }
+              } catch (error) {
+                console.error('Nominatim API error:', error);
+                if (retries > 0) {
+                  console.log(`Retrying... (${retries} attempts left)`);
+                  await new Promise((resolve) => setTimeout(resolve, delay));
+                  return fetchAddress(retries - 1, delay * 2);
+                }
+                setAddress('Unable to fetch address');
+              }
+            };
+
+            await fetchAddress();
           },
           (error) => {
-            console.log(error);
-            setAddress('Unable to fetch location');
+            console.error('Geolocation error:', error);
+            setAddress(`Geolocation error: ${error.message}`);
           },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
       } catch (err) {
-        console.warn(err);
+        console.error('Permission or setup error:', err);
+        setAddress('Error fetching location');
       }
     };
 
@@ -115,11 +190,11 @@ export default function HomeScreen({ navigation }: any) {
 
   const handleSubscribe = (item: { name: string }) => {
     console.log(`Subscribed to: ${item.name}`);
+    navigation.navigate('Subscribe', { product: item }); // Ensure product is passed with type
   };
 
   return (
     <LinearGradient colors={['#E3F2FD', '#BBDEFB']} style={styles.container}>
-      {/* ✅ Dynamic Address in Header */}
       <Header
         title="CF Farming"
         address={address}
@@ -134,7 +209,6 @@ export default function HomeScreen({ navigation }: any) {
           />
           <Text style={styles.header}>FreshMilk Delivery</Text>
 
-          {/* Carousel */}
           <ScrollView
             ref={scrollViewRef}
             horizontal
@@ -156,17 +230,14 @@ export default function HomeScreen({ navigation }: any) {
             ))}
           </ScrollView>
 
-          {/* Calendar */}
           <MilkCalendar />
 
-          {/* Categories */}
           <CategoryChips
             categories={categories}
             selected={selectedCategory}
             onSelect={handleSelectCategory}
           />
 
-          {/* Products */}
           <View style={styles.productList}>
             {filteredProducts.length > 0 ? (
               filteredProducts.map((item) => (
@@ -215,7 +286,10 @@ const styles = StyleSheet.create({
   adImage: { width: '100%', height: '100%' },
   overlay: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,

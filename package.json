@@ -1,5 +1,5 @@
 {
-  "name": "CF",
+  "name": "cf",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -26,6 +26,7 @@
     "react-native-geocoding": "^0.5.0",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "^2.28.0",
+    "react-native-intent-launcher": "^0.2.1",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-permissions": "^5.4.2",
     "react-native-reanimated": "^4.1.2",
