@@ -144,14 +144,17 @@ React.useEffect(() => {
     }
 
     const totalAmount = product.price * parseQuantity(quantity);
-    const VPA = 'arunganapathi20-3@okaxis'; // Replace with your real UPI ID
+    const AMOUNT = totalAmount.toFixed(2); 
+    const VPA = 'arunganapathi20-3@okicici'; // Replace with your real UPI ID
     const NAME = 'CHINNA FARMING';
     const TXNID = `T${Date.now()}`;
+    const TR = `TR${Date.now()}`;
     const NOTE = `Payment for ${product.name} (${quantity})`;
 
-    const upiUrl = `upi://pay?pa=${VPA}&pn=${encodeURIComponent(NAME)}&tid=${TXNID}&tr=${TXNID}&tn=${encodeURIComponent(
-      NOTE
-    )}&am=${totalAmount.toFixed(2)}&cu=INR`;
+  const upiUrl = `upi://pay?pa=${VPA}&pn=${encodeURIComponent(NAME)}&tid=${TXNID}&tr=${TR}&tn=${encodeURIComponent(
+  NOTE
+)}&am=${AMOUNT}&cu=INR`;
+
 
     try {
       const supported = await Linking.canOpenURL(app.scheme);
