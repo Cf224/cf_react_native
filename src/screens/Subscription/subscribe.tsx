@@ -1,13 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Animated, Modal, Alert } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-
-type RootStackParamList = {
-  Subscribe: { product: { id: string; name: string; price: number; type: string } };
-};
+import { RootStackParamList } from '../../navigation/types'; // Adjust path to your types file
 
 type Props = {
   route: RouteProp<RootStackParamList, 'Subscribe'>;
@@ -20,9 +17,12 @@ const volumeOptions: Record<string, string[]> = {
   eggs: ['10 pcs'],
   live_chicken: ['1kg', '2kg', '5kg'],
   cutted_chicken: ['1kg', '2kg', '5kg'],
-  cheese: [], // No specific quantities for cheese
-  yogurt: [], // No specific quantities for yogurt
+  cheese: [],
+  yogurt: [],
 };
+
+// Delivery time options
+const deliveryTimeOptions = ['Morning', 'Evening', 'Both'];
 
 export default function Subscribe({ route, navigation }: Props) {
   const { product } = route.params;
@@ -31,8 +31,15 @@ export default function Subscribe({ route, navigation }: Props) {
   const [showFrom, setShowFrom] = useState(false);
   const [showTo, setShowTo] = useState(false);
   const [volume, setVolume] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showPaymentChoice, setShowPaymentChoice] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const modalFadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Set minimum date to current date
+  const minimumDate = new Date();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -44,11 +51,52 @@ export default function Subscribe({ route, navigation }: Props) {
 
   const handleSubscribe = () => {
     if (!volume) {
-      alert('Please select or enter a volume/quantity');
+      Alert.alert('Error', 'Please select or enter a volume/quantity');
       return;
     }
-    console.log('Subscribed:', { product, fromDate, toDate, volume });
-    navigation.goBack();
+    if (!deliveryTime) {
+      Alert.alert('Error', 'Please select a delivery time');
+      return;
+    }
+    if (fromDate >= toDate) {
+      Alert.alert('Error', 'To Date must be after From Date');
+      return;
+    }
+
+    // Show payment choice modal
+    setShowPaymentChoice(true);
+  };
+
+  const handlePayNow = () => {
+    setShowPaymentChoice(false);
+    navigation.navigate('BuyNow', {
+      product,
+      initialQuantity: volume,
+      subscriptionInfo: { fromDate, toDate, deliveryTime }, // Optional
+    });
+  };
+
+  const handlePayLater = () => {
+    setShowPaymentChoice(false);
+    setShowSuccess(true);
+    Animated.timing(modalFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    console.log('Subscribed:', { product, fromDate, toDate, volume, deliveryTime });
+
+    setTimeout(() => {
+      Animated.timing(modalFadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowSuccess(false);
+        navigation.goBack();
+      });
+    }, 2000);
   };
 
   const handleButtonPressIn = () => {
@@ -65,9 +113,7 @@ export default function Subscribe({ route, navigation }: Props) {
     }).start();
   };
 
-  const options = product?.type
-    ? volumeOptions[product.type.toLowerCase()] || []
-    : [];
+  const options = product?.type ? volumeOptions[product.type.toLowerCase()] || [] : [];
 
   return (
     <LinearGradient colors={['#E3F2FD', '#BBDEFB']} style={styles.container}>
@@ -76,7 +122,6 @@ export default function Subscribe({ route, navigation }: Props) {
           source={{ uri: 'https://via.placeholder.com/100?text=Milk+Logo' }}
           style={styles.logo}
         />
-        {/* Display product name and selected quantity in title */}
         <Text style={styles.title}>
           Subscribe to {product.name} {volume ? `(${volume})` : ''}
         </Text>
@@ -92,6 +137,7 @@ export default function Subscribe({ route, navigation }: Props) {
               value={fromDate}
               mode="date"
               display="default"
+              minimumDate={minimumDate}
               onChange={(e, d) => {
                 setShowFrom(false);
                 if (d) setFromDate(d);
@@ -110,6 +156,7 @@ export default function Subscribe({ route, navigation }: Props) {
               value={toDate}
               mode="date"
               display="default"
+              minimumDate={new Date(fromDate.getTime() + 24 * 60 * 60 * 1000)}
               onChange={(e, d) => {
                 setShowTo(false);
                 if (d) setToDate(d);
@@ -147,11 +194,35 @@ export default function Subscribe({ route, navigation }: Props) {
           )}
         </View>
 
-        {/* Dedicated section for displaying selected quantity */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Delivery Time</Text>
+          <View style={styles.optionContainer}>
+            {deliveryTimeOptions.map((time) => (
+              <TouchableOpacity
+                key={time}
+                onPress={() => setDeliveryTime(time)}
+                style={[
+                  styles.optionBtn,
+                  deliveryTime === time && { backgroundColor: '#1976D2', borderColor: '#1976D2' },
+                ]}
+              >
+                <Text style={[styles.optionText, deliveryTime === time && { color: '#fff' }]}>{time}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {volume && (
           <View style={styles.section}>
             <Text style={styles.label}>Selected Quantity</Text>
             <Text style={styles.selectedQuantity}>{volume}</Text>
+          </View>
+        )}
+
+        {deliveryTime && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Selected Delivery Time</Text>
+            <Text style={styles.selectedQuantity}>{deliveryTime}</Text>
           </View>
         )}
 
@@ -171,6 +242,38 @@ export default function Subscribe({ route, navigation }: Props) {
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
+
+      <Modal transparent visible={showSuccess} animationType="none">
+        <Animated.View style={[styles.modalContainer, { opacity: modalFadeAnim }]}>
+          <View style={styles.modalContent}>
+            <LinearGradient colors={['#4CAF50', '#81C784']} style={styles.modalGradient}>
+              <Text style={styles.modalText}>Successfully Subscribed!</Text>
+              <Text style={styles.modalSubText}>
+                Your {product.name} subscription ({volume}, {deliveryTime}) is set from {fromDate.toDateString()} to {toDate.toDateString()}.
+              </Text>
+            </LinearGradient>
+          </View>
+        </Animated.View>
+      </Modal>
+
+      <Modal transparent visible={showPaymentChoice} animationType="none">
+        <View style={styles.modalContainer}>
+          <View style={styles.choiceModalContent}>
+            <Text style={styles.choiceTitle}>Choose Payment Option</Text>
+            <Text style={styles.choiceSubText}>How would you like to handle payment for your subscription?</Text>
+            <TouchableOpacity onPress={handlePayNow} style={styles.payNowContainer}>
+              <LinearGradient colors={['#1976D2', '#2196F3']} style={styles.payGradient}>
+                <Text style={styles.payBtnText}>Pay Now</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePayLater} style={styles.payLaterContainer}>
+              <LinearGradient colors={['#4CAF50', '#81C784']} style={styles.payGradient}>
+                <Text style={styles.payBtnText}>Pay Later</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -283,8 +386,81 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#CFD8DC',
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalGradient: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalSubText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+  },
+  choiceModalContent: {
+    width: '80%',
+    borderRadius: 20,
+    padding: 32,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  choiceTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  choiceSubText: {
+    fontSize: 16,
+    color: '#546E7A',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  payNowContainer: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  payLaterContainer: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  payGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  payBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
 });
-
-function alert(arg0: string) {
-  throw new Error('Function not implemented.');
-}

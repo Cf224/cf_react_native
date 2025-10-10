@@ -39,7 +39,7 @@ export default function Header({ title = "CF Farming", address = "Your Address",
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     paddingHorizontal: 12,
     paddingVertical: 10,
     alignItems: 'center',

@@ -15,9 +15,18 @@ import {
 import { RouteProp } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import colors from '../../constants/colors';
+import { RootStackParamList } from '../../navigation/types'; // Adjust path to your types file
 
-// Define Product type
+// Define colors (create this file if it doesn't exist)
+const colors = {
+  primary: '#1976D2',
+  primaryDark: '#1565C0',
+  primaryLight: '#BBDEFB',
+  text: '#263238',
+  border: '#CFD8DC',
+};
+
+// Product Type
 type Product = {
   id: number;
   name: string;
@@ -25,11 +34,6 @@ type Product = {
   image: any;
   category?: string;
   type: string;
-};
-
-// Navigation types
-type RootStackParamList = {
-  BuyNow: { product: Product };
 };
 
 type BuyNowScreenRouteProp = RouteProp<RootStackParamList, 'BuyNow'>;
@@ -40,14 +44,12 @@ interface BuyNowScreenProps {
 
 type AnimationMap = Record<'card' | 'upi' | 'cod', Animated.Value>;
 
-// Common UPI apps
 const upiApps = [
-  { id: 'gpay', name: 'Google Pay', packageName: 'com.google.android.apps.nbu.paisa.user', scheme: 'gpay://upi' },
-  { id: 'phonepe', name: 'PhonePe', packageName: 'com.phonepe.app', scheme: 'phonepe://upi' },
-  { id: 'paytm', name: 'Paytm', packageName: 'net.one97.paytm', scheme: 'paytm://upi' },
+  { id: 'gpay', name: 'Google Pay', scheme: 'gpay://upi' },
+  { id: 'phonepe', name: 'PhonePe', scheme: 'phonepe://upi' },
+  { id: 'paytm', name: 'Paytm', scheme: 'paytmmp://pay' },
 ];
 
-// Quantity options
 const volumeOptions: Record<string, string[]> = {
   milk: ['100ml', '250ml', '500ml', '1L'],
   eggs: ['10 pcs'],
@@ -58,12 +60,29 @@ const volumeOptions: Record<string, string[]> = {
 };
 
 export default function BuyNowScreen({ route }: BuyNowScreenProps) {
-  const { product } = route.params;
+  const { product, initialQuantity, subscriptionInfo } = route.params;
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [selectedUpiApp, setSelectedUpiApp] = useState<any>(null);
   const [availableUpiApps, setAvailableUpiApps] = useState<any[]>([]);
   const [loadingUpiApps, setLoadingUpiApps] = useState(false);
-  const [quantity, setQuantity] = useState<string>('');
+  const [quantity, setQuantity] = useState<string>(initialQuantity ?? '');
+
+  // Listen for UPI deep link callbacks
+React.useEffect(() => {
+  const subscription = Linking.addEventListener('url', ({ url }) => {
+    console.log('UPI Response:', url); // Optional: log for debugging
+
+    if (url.toLowerCase().includes('status=success')) {
+      Alert.alert('✅ Payment Successful', 'Thank you for your payment!');
+    } else if (url.toLowerCase().includes('status=failure')) {
+      Alert.alert('❌ Payment Failed', 'Payment was not completed. Please try again.');
+    } else if (url.toLowerCase().includes('status=submitted')) {
+      Alert.alert('⏳ Payment Pending', 'Waiting for confirmation.');
+    }
+  });
+
+  return () => subscription.remove();
+}, []);
 
   const animatedValues: AnimationMap = {
     card: new Animated.Value(0),
@@ -72,19 +91,13 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
   };
 
   const paymentOptions = [
-    { id: 'card', label: 'Credit/Debit Card', icon: 'credit-card' },
-    { id: 'upi', label: 'UPI', icon: 'payment' },
+    { id: 'upi', label: 'UPI Payment', icon: 'payment' },
     { id: 'cod', label: 'Cash on Delivery', icon: 'money' },
   ];
 
   const options = product?.type ? volumeOptions[product.type.toLowerCase()] || [] : [];
 
-  // ✅ Fetch UPI apps
   const fetchUpiApps = async () => {
-    if (Platform.OS !== 'android') {
-      setAvailableUpiApps(upiApps);
-      return;
-    }
     setLoadingUpiApps(true);
     try {
       const apps: any[] = [];
@@ -100,8 +113,7 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
     }
   };
 
-  // ✅ Handle payment option selection
-  const handlePaymentSelect = (id: 'card' | 'upi' | 'cod') => {
+  const handlePaymentSelect = (id: 'upi' | 'cod') => {
     setSelectedPayment(id);
     setSelectedUpiApp(null);
 
@@ -113,7 +125,6 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
     if (id === 'upi') fetchUpiApps();
   };
 
-  // ✅ Parse quantity string into number
   const parseQuantity = (qty: string): number => {
     const numeric = parseFloat(qty);
     if (isNaN(numeric)) {
@@ -126,37 +137,40 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
     return numeric;
   };
 
-  // ✅ Launch UPI payment
   const launchUpiPayment = async (app: any) => {
     if (!app || !product.price || !quantity) {
-      Alert.alert('Error', 'Please select a quantity and UPI app.');
+      Alert.alert('Error', 'Please select quantity and UPI app.');
       return;
     }
 
     const totalAmount = product.price * parseQuantity(quantity);
-
-    const VPA = 'arunganapathi20-3@okaxis'; // 🟢 Replace with your actual UPI ID
-    const NAME = 'YourBusinessName';
+    const VPA = 'arunganapathi20-3@okaxis'; // Replace with your real UPI ID
+    const NAME = 'CHINNA FARMING';
     const TXNID = `T${Date.now()}`;
+    const NOTE = `Payment for ${product.name} (${quantity})`;
 
-    const upiUrl = `upi://pay?pa=${VPA}&pn=${encodeURIComponent(NAME)}&mc=0000&tid=${TXNID}&tr=${TXNID}&tn=${encodeURIComponent(
-      `Payment for ${product.name} (${quantity})`
+    const upiUrl = `upi://pay?pa=${VPA}&pn=${encodeURIComponent(NAME)}&tid=${TXNID}&tr=${TXNID}&tn=${encodeURIComponent(
+      NOTE
     )}&am=${totalAmount.toFixed(2)}&cu=INR`;
 
     try {
       const supported = await Linking.canOpenURL(app.scheme);
       if (supported) {
         await Linking.openURL(upiUrl);
+        Alert.alert(
+          'Complete Payment',
+          'After finishing payment in your UPI app, return here and tap OK.',
+          [{ text: 'OK' }]
+        );
       } else {
         Alert.alert('Error', `${app.name} not available on this device.`);
       }
     } catch (error) {
-      console.error('UPI error:', error);
+      console.error('UPI Error:', error);
       Alert.alert('Error', 'Failed to open UPI app.');
     }
   };
 
-  // ✅ Listen for UPI payment response
   useEffect(() => {
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('UPI Response:', url);
@@ -171,10 +185,9 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
     return () => subscription.remove();
   }, []);
 
-  // ✅ Confirm payment button action
   const handleConfirmPayment = () => {
     if (!selectedPayment) {
-      Alert.alert('Error', 'Please select a payment option.');
+      Alert.alert('Error', 'Please select a payment method.');
       return;
     }
     if (!quantity) {
@@ -188,14 +201,19 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
         return;
       }
       launchUpiPayment(selectedUpiApp);
-    } else {
-      Alert.alert('Success', `Payment for ${product.name} via ${selectedPayment.toUpperCase()} successful!`);
+    } else if (selectedPayment === 'cod') {
+      Alert.alert('🛒 Order Placed', 'Cash on Delivery confirmed.');
     }
   };
 
   return (
     <LinearGradient colors={['#E3F2FD', '#BBDEFB', '#90CAF9']} style={styles.container}>
-      {/* Product Card */}
+      {subscriptionInfo && (
+        <Text style={styles.subscriptionInfo}>
+          Subscription: {subscriptionInfo.fromDate.toDateString()} -{' '}
+          {subscriptionInfo.toDate.toDateString()} ({subscriptionInfo.deliveryTime})
+        </Text>
+      )}
       <Animated.View style={[styles.productContainer, { opacity: animatedValues.card }]}>
         <LinearGradient colors={['#fff', '#f5f5f5']} style={styles.productCard}>
           <Image
@@ -203,16 +221,13 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
             style={styles.productImage}
             resizeMode="cover"
           />
-          <Text style={styles.productName}>
-            {product.name} {quantity ? `(${quantity})` : ''}
-          </Text>
+          <Text style={styles.productName}>{product.name} {quantity ? `(${quantity})` : ''}</Text>
           <Text style={styles.productPrice}>
             ₹{product.price} {quantity ? `x ${quantity} = ₹${(product.price * parseQuantity(quantity)).toFixed(2)}` : ''}
           </Text>
         </LinearGradient>
       </Animated.View>
 
-      {/* Quantity Section */}
       <View style={styles.quantityContainer}>
         <Text style={styles.sectionTitle}>Select Quantity</Text>
         {options.length > 0 ? (
@@ -239,7 +254,6 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
         )}
       </View>
 
-      {/* Payment Options */}
       <View style={styles.paymentContainer}>
         <Text style={styles.sectionTitle}>Choose Payment Method</Text>
         {paymentOptions.map((option) => (
@@ -260,7 +274,7 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
               },
             ]}
           >
-            <TouchableOpacity onPress={() => handlePaymentSelect(option.id as 'card' | 'upi' | 'cod')} style={styles.paymentButton}>
+            <TouchableOpacity onPress={() => handlePaymentSelect(option.id as 'upi' | 'cod')} style={styles.paymentButton}>
               <Icon
                 name={option.icon}
                 size={24}
@@ -273,7 +287,6 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
         ))}
       </View>
 
-      {/* UPI App List */}
       {selectedPayment === 'upi' && (
         <View style={styles.upiSubContainer}>
           <Text style={styles.subSectionTitle}>Select UPI App</Text>
@@ -294,7 +307,6 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
         </View>
       )}
 
-      {/* Confirm Button */}
       <TouchableOpacity onPress={handleConfirmPayment}>
         <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.confirmButton}>
           <Text style={styles.confirmButtonText}>Confirm Payment</Text>
@@ -304,11 +316,17 @@ export default function BuyNowScreen({ route }: BuyNowScreenProps) {
   );
 }
 
-// ✅ Styles
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
+  subscriptionInfo: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0D47A1',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
   productContainer: { alignItems: 'center', marginBottom: 32 },
-  productCard: { alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, padding: 16, elevation: 6, width: '90%' },
+  productCard: { alignItems: 'center', borderRadius: 16, padding: 16, elevation: 6, width: '90%' },
   productImage: { width: 140, height: 140, borderRadius: 12, marginBottom: 16 },
   productName: { fontSize: 22, fontWeight: '700', color: colors.text },
   productPrice: { fontSize: 20, fontWeight: '600', color: colors.primary, marginTop: 8 },

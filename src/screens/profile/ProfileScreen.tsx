@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { useDispatch } from 'react-redux'; // Add useDispatch
 import colors from '../../constants/colors';
 import Icon from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logout } from '../../store/slices/authSlice'; // Import your logout action
 
-
-
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: any) {
   // Dummy user data
   const user = {
     name: 'John Doe',
@@ -15,6 +16,29 @@ export default function ProfileScreen() {
     subscription: 'Milk Monthly Package',
     joinDate: '2025-01-01',
     profilePic: 'https://via.placeholder.com/100',
+  };
+
+  const dispatch = useDispatch(); // Initialize dispatch
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      // Clear AsyncStorage data
+      await AsyncStorage.removeItem('lastLogin');
+      await AsyncStorage.removeItem('cachedAddress');
+      console.log('Cleared AsyncStorage data on logout');
+
+      // Dispatch logout action to clear token in Redux
+      dispatch(logout());
+
+      // Optionally reset navigation to ensure clean state
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   return (
@@ -60,10 +84,16 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.editBtn}>
         <Text style={{ color: '#fff', fontWeight: '700' }}>Edit Profile</Text>
       </TouchableOpacity>
+
+      {/* Logout Button */}
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={{ color: '#fff', fontWeight: '700' }}>Logout</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -116,6 +146,13 @@ const styles = StyleSheet.create({
   },
   editBtn: {
     backgroundColor: colors.primary,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoutBtn: {
+    backgroundColor: '#D32F2F',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',

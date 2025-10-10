@@ -5,17 +5,17 @@ import colors from '../../constants/colors';
 
 // Example completed days (can come from API/store)
 const completedDays = [
-  '2025-09-30',
-  '2025-09-01',
-  '2025-09-02',
-  '2025-09-03',
-  '2025-09-05',
-  '2025-09-06',
+  '2025-10-30',
+  '2025-10-01',
+  '2025-10-02',
+  '2025-10-03',
+  '2025-10-05',
+  '2025-10-06',
 ];
 
 // Define the date range (start and end dates)
-const startDate = '2025-09-01';
-const endDate = '2025-09-30';
+const startDate = '2025-10-01';
+const endDate = '2025-10-30';
 
 export default function  MilkCalendar() {
   const [markedDates, setMarkedDates] = useState({});

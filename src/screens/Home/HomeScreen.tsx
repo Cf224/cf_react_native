@@ -10,11 +10,11 @@ import {
   Animated,
   PermissionsAndroid,
   Platform,
-  ImageSourcePropType,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import MilkCalendar from '../Subscription/SubscribeScreen';
 import CategoryChips from '../../components/CategoryChips';
 import ProductCard from '../../components/ProductCard';
@@ -23,11 +23,13 @@ import Header from '../../components/header';
 const { width } = Dimensions.get('window');
 
 const adImages = [
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1350&q=80',
-  'https://images.unsplash.com/photo-1594470119273-0a6a6d57b2a0?auto=format&fit=crop&w=1350&q=80',
+  // 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1350&q=80',
+  // 'https://images.unsplash.com/photo-1594470119273-0a6a6d57b2a0?auto=format&fit=crop&w=1350&q=80',
+  require('../../assets/image/cf_curd.png'),
+  require('../../assets/image/cf_ghee.png'),
+  require('../../assets/image/cfmilk.png'),
 ];
 
-// Updated categories to include live_chicken and cutted_chicken
 const categories = [
   { key: 'milk', label: 'Milk' },
   { key: 'eggs', label: 'Eggs' },
@@ -38,8 +40,7 @@ const categories = [
   { key: 'all', label: 'All' },
 ];
 
-// Updated products array with live_chicken and cutted_chicken
-const products: { id: string; name: string; price: number; category: string; image: ImageSourcePropType; type: string }[] = [
+const products = [
   { id: '1', name: 'Fresh Cow Milk', price: 60, category: 'milk', type: 'milk', image: require('../../../src/assets/image/cfmilk.png') },
   { id: '2', name: 'Organic Eggs', price: 80, category: 'eggs', type: 'eggs', image: require('../../../src/assets/image/cfegg.png') },
   { id: '3', name: 'Cheddar Cheese', price: 150, category: 'cheese', type: 'cheese', image: 'https://images.unsplash.com/photo-1486297678162-eb4334d94d3f?auto=format&fit=crop&w=300&q=80' },
@@ -50,8 +51,8 @@ const products: { id: string; name: string; price: number; category: string; ima
   { id: '8', name: 'Cutted Chicken', price: 250, category: 'cutted_chicken', type: 'cutted_chicken', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=300&q=80' },
 ];
 
-export default function HomeScreen({ navigation }: any) {
-  const scrollViewRef = useRef<ScrollView>(null);
+export default function HomeScreen({ navigation }) {
+  const scrollViewRef = useRef(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [address, setAddress] = useState('Fetching location...');
@@ -80,15 +81,33 @@ export default function HomeScreen({ navigation }: any) {
   }, [fadeAnim]);
 
   useEffect(() => {
-    const requestLocation = async () => {
+    const checkLoginAndRequestLocation = async () => {
       try {
+        const netInfo = await NetInfo.fetch();
+        if (!netInfo.isConnected) {
+          console.log('No internet connection');
+          setAddress('No internet connection');
+          return;
+        }
+
+        const lastLogin = await AsyncStorage.getItem('lastLogin');
+        const currentTime = Date.now().toString();
+        const isNewLogin = !lastLogin || parseInt(lastLogin) < Date.now() - 24 * 60 * 60 * 1000;
+
+        if (isNewLogin) {
+          console.log('New login detected, requesting location permission...');
+          await AsyncStorage.removeItem('cachedAddress');
+          await AsyncStorage.setItem('lastLogin', currentTime);
+        }
+
         const cachedAddress = await AsyncStorage.getItem('cachedAddress');
-        if (cachedAddress) {
+        if (cachedAddress && !isNewLogin) {
           console.log('Using cached address:', cachedAddress);
           setAddress(cachedAddress);
           return;
         }
 
+        let permissionGranted = false;
         if (Platform.OS === 'android') {
           const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -100,11 +119,16 @@ export default function HomeScreen({ navigation }: any) {
               buttonPositive: 'OK',
             }
           );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            console.log('Location permission denied');
-            setAddress('Location permission denied');
-            return;
-          }
+          permissionGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+        } else if (Platform.OS === 'ios') {
+          const status = await Geolocation.requestAuthorization('whenInUse');
+          permissionGranted = status === 'granted';
+        }
+
+        if (!permissionGranted) {
+          console.log('Location permission denied');
+          setAddress('Location permission denied');
+          return;
         }
 
         Geolocation.getCurrentPosition(
@@ -118,53 +142,13 @@ export default function HomeScreen({ navigation }: any) {
               return;
             }
 
-            const fetchAddress = async (retries = 3, delay = 1000) => {
-              try {
-                const response = await fetch(
-                  `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
-                  {
-                    headers: {
-                      'User-Agent': 'CF_Farming_App/1.0 (your.email@example.com)',
-                    },
-                  }
-                );
-
-                if (!response.ok) {
-                  throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Nominatim response:', data);
-
-                if (data && data.address) {
-                  const street = data.address.road || 'Unknown Street';
-                  const city = data.address.city || data.address.town || 'Unknown City';
-                  const formattedAddress = `${street}, ${city}`;
-                  setAddress(formattedAddress);
-                  await AsyncStorage.setItem('cachedAddress', formattedAddress);
-                  console.log('Address cached:', formattedAddress);
-                } else {
-                  setAddress('No address found');
-                  console.log('No address data in response');
-                }
-              } catch (error) {
-                console.error('Nominatim API error:', error);
-                if (retries > 0) {
-                  console.log(`Retrying... (${retries} attempts left)`);
-                  await new Promise((resolve) => setTimeout(resolve, delay));
-                  return fetchAddress(retries - 1, delay * 2);
-                }
-                setAddress('Unable to fetch address');
-              }
-            };
-
-            await fetchAddress();
+            await fetchAddress(latitude, longitude);
           },
           (error) => {
             console.error('Geolocation error:', error);
             setAddress(`Geolocation error: ${error.message}`);
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 10000 }
         );
       } catch (err) {
         console.error('Permission or setup error:', err);
@@ -172,10 +156,60 @@ export default function HomeScreen({ navigation }: any) {
       }
     };
 
-    requestLocation();
+    const fetchAddress = async (latitude: number, longitude: number, retries = 3, delay = 1000) => {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+          {
+            headers: {
+              'User-Agent': 'CF_Farming_App/1.0 (your-contact-email@domain.com)', // Replace with valid email
+              'Accept': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 429 && retries > 0) {
+            console.log('Rate limit exceeded, retrying...');
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return fetchAddress(latitude, longitude, retries - 1, delay * 2);
+          }
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Nominatim response:', data);
+
+        if (data && data.address) {
+          const street = data.address.road || data.address.street || 'Unknown Street';
+          const city =
+            data.address.city ||
+            data.address.town ||
+            data.address.village ||
+            'Unknown City';
+          const formattedAddress = `${street}, ${city}`;
+          setAddress(formattedAddress);
+          await AsyncStorage.setItem('cachedAddress', formattedAddress);
+          console.log('Address cached:', formattedAddress);
+        } else {
+          setAddress('No address found');
+          console.log('No address data in response');
+        }
+      } catch (error) {
+        console.error('Nominatim API error:', error);
+        if (retries > 0) {
+          console.log(`Retrying... (${retries} attempts left)`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return fetchAddress(latitude, longitude, retries - 1, delay * 2);
+        }
+        setAddress('Unable to fetch address');
+      }
+    };
+
+    checkLoginAndRequestLocation();
   }, []);
 
-  const handleSelectCategory = (key: string) => {
+  const handleSelectCategory = (key: React.SetStateAction<string>) => {
     setSelectedCategory(key);
   };
 
@@ -184,14 +218,35 @@ export default function HomeScreen({ navigation }: any) {
       ? products
       : products.filter((product) => product.category === selectedCategory);
 
-  const handleProductPress = (item: { name: string }) => {
+  const handleProductPress = (item: { name: any; }) => {
     console.log(`Pressed product: ${item.name}`);
   };
 
-  const handleSubscribe = (item: { name: string }) => {
+  const handleSubscribe = (item: { name: any; }) => {
     console.log(`Subscribed to: ${item.name}`);
-    navigation.navigate('Subscribe', { product: item }); // Ensure product is passed with type
+    navigation.navigate('Subscribe', { product: item });
   };
+
+  if (address === 'Unable to fetch address' || address.includes('error')) {
+    return (
+      <LinearGradient colors={['#E3F2FD', '#BBDEFB']} style={styles.container}>
+        <Header
+          title="CF Farming"
+          address={address}
+          onProfilePress={() => navigation.navigate('Profile', { address })}
+        />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{address}</Text>
+          <TouchableOpacity
+            style={styles.manualAddressButton}
+            onPress={() => navigation.navigate('ManualAddressInput')}
+          >
+            <Text style={styles.manualAddressText}>Enter Address Manually</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={['#E3F2FD', '#BBDEFB']} style={styles.container}>
@@ -218,7 +273,7 @@ export default function HomeScreen({ navigation }: any) {
           >
             {adImages.map((img, index) => (
               <TouchableOpacity key={index} style={styles.adCard}>
-                <Image source={{ uri: img }} style={styles.adImage} resizeMode="cover" />
+              <Image source={img} style={styles.adImage} resizeMode="cover" />
                 <LinearGradient
                   colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.2)']}
                   style={styles.overlay}
@@ -298,4 +353,23 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 16, color: '#E3F2FD', marginTop: 8 },
   productList: { marginTop: 16 },
   noProductsText: { textAlign: 'center', color: '#546E7A', fontSize: 16, marginTop: 16 },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  manualAddressButton: {
+    backgroundColor: '#0D47A1',
+    padding: 10,
+    borderRadius: 8,
+  },
+  manualAddressText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });

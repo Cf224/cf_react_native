@@ -1,7 +1,7 @@
 // src/constants/colors.ts
 export default {
-  primary: '#0288D1',
-  accent: '#FF4081',
+  primary: '#2a9409ff',
+  accent: '#fabdbdff',
   bg: '#fff',
   text: '#000',
   card: '#fff',

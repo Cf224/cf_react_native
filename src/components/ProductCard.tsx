@@ -11,13 +11,14 @@ type Product = {
   price: number;
   image: ImageSourcePropType;
   category?: string;
+  type: string;
+  rating?: number; // Added rating field
 };
 
 // Navigation types
 type RootStackParamList = {
   Subscribe: { product: Product };
-  BuyNow: { product: Product }; // Added BuyNow route
-  // Add other routes here if needed
+  BuyNow: { product: Product };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -37,20 +38,24 @@ export default function ProductCard({ item, onPress, onSubscribe }: ProductCardP
         <Image
           source={
             typeof item.image === 'string' ? { uri: item.image } : item.image
-          } // Handle both local and remote images
+          }
           style={styles.image}
           resizeMode="cover"
-          // defaultSource={require('../assets/image/cfmilk.png')} // Fallback image
           onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
         />
       </View>
       <View style={styles.right}>
-        <Text style={styles.title}>{item.name}</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>{item.name}</Text>
+          <View style={styles.ratingContainer}>
+            <Text style={styles.rating}>⭐ {item.rating || 4.5}</Text>
+          </View>
+        </View>
         <Text style={styles.price}>₹{item.price}</Text>
 
         <View style={{ flexDirection: 'row', marginTop: 8, gap: 10 }}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('BuyNow', { product: item })} // Navigate to BuyNow
+            onPress={() => navigation.navigate('BuyNow', { product: item })}
             style={styles.subscribeBtn}
           >
             <Text style={{ color: '#fff' }}>Buy</Text>
@@ -58,8 +63,8 @@ export default function ProductCard({ item, onPress, onSubscribe }: ProductCardP
 
           <TouchableOpacity
             onPress={() => {
-              onSubscribe(item); // Call onSubscribe prop
-              navigation.navigate('Subscribepage', { product: item }); // Navigate to Subscribe
+              onSubscribe(item);
+              navigation.navigate('Subscribepage', { product: item });
             }}
             style={styles.subscribeBtn}
           >
@@ -81,8 +86,13 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   left: { width: 80, alignItems: 'center', justifyContent: 'center' },
-  image: { width: 64, height: 64, borderRadius: 8 }, // Style for Image
+  image: { width: 64, height: 64, borderRadius: 8 },
   right: { flex: 1, paddingLeft: 12 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: { fontSize: 16, fontWeight: '600' },
   price: { marginTop: 6, color: colors.primary },
   subscribeBtn: {
@@ -90,5 +100,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 6,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rating: {
+    fontSize: 14,
+    color: colors.primary,
   },
 });
