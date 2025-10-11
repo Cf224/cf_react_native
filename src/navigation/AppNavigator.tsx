@@ -8,28 +8,29 @@ import StaffDashboardTabs from '../components/BottomNav';
 import Subscribe from '../screens/Subscription/subscribe';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import BuyNowScreen from '../screens/Buy/BuyNowscreen';
+import { RootStackParamList } from './types';
 
 
 
-// Define Product type (consistent with ProductCard.tsx)
-type Product = {
-  id: number;
-  name: string;
-  price: number;
-  image: string | { uri: string }; // Adjust based on ImageSourcePropType
-  category?: string;
-};
+// // Define Product type (consistent with ProductCard.tsx)
+// type Product = {
+//   id: number;
+//   name: string;
+//   price: number;
+//   image: string | { uri: string }; // Adjust based on ImageSourcePropType
+//   category?: string;
+// };
 
-// Define RootStackParamList
-export type RootStackParamList = {
-  bottom: undefined;
-  Home: undefined;
-  ProductDetail: undefined;
-  Subscribe: { product: Product };
-  CalendarBill: undefined;
-  Profile: undefined;
-  BuyNow: { product: Product };
-};
+// // Define RootStackParamList
+// export type RootStackParamList = {
+//   bottom: undefined;
+//   Home: undefined;
+//   ProductDetail: undefined;
+//   Subscribe: { product: Product };
+//   CalendarBill: undefined;
+//   Profile: undefined;
+//   BuyNow: { product: Product };
+// };
 
 // Create typed Stack navigator
 const Stack = createStackNavigator<RootStackParamList>();
@@ -53,15 +54,11 @@ export default function AppNavigator() {
         options={{ title: 'Product' }}
       />
       <Stack.Screen
-        name="Subscribe"
+        name="SubscribeScreen"
         component={SubscribeScreen}
-        options={{ title: 'Subscribe' }}
+        options={{ title: 'SubscribeScreen' }}
       />
-        <Stack.Screen
-        name="Subscribepage"
-        component={Subscribe}
-        options={{ title: 'Subscribepage' }}
-      />
+     <Stack.Screen name="Subscribe" component={Subscribe} />
       <Stack.Screen
         name="CalendarBill"
         component={CalendarBillScreen}

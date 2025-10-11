@@ -1,11 +1,26 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Image,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Calendar } from 'react-native-calendars';
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Product, RootStackParamList } from '../../navigation/types'; // Adjust path to your types file
+
+// Define navigation type
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CalendarBill'>;
 
 export default function CalendarBillScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const navigation = useNavigation<NavigationProp>(); // Initialize navigation
 
   // Example marked dates (replace with real data from subscription deliveries)
   const marked = {
@@ -36,8 +51,28 @@ export default function CalendarBillScreen() {
   };
 
   const handlePayNow = () => {
-    console.log('Initiating payment for ₹1170');
-    // Add payment logic here (e.g., navigate to payment gateway)
+    // Define a product object based on billing details
+    const product: Product = {
+      id: 'bill_001', // Unique ID for the bill
+      name: 'Monthly Milk Subscription',
+      price: 6, // Total bill amount
+      image: { uri: 'https://via.placeholder.com/100?text=Milk+Logo' }, // Same as logo
+      type: 'milk', // Adjust based on your product type
+    };
+
+    // Optional: Define subscription info if applicable
+    const subscriptionInfo = {
+      fromDate: new Date('2025-09-01'),
+      toDate: new Date('2025-09-30'),
+      deliveryTime: 'Morning', // Example delivery time
+    };
+
+    // Navigate to BuyNowScreen with product and subscriptionInfo
+    navigation.navigate('BuyNow', {
+      product,
+      initialQuantity: '26 deliveries', // Based on bill details
+      subscriptionInfo,
+    });
   };
 
   return (
@@ -51,7 +86,7 @@ export default function CalendarBillScreen() {
 
         <View style={styles.calendarContainer}>
           <Calendar
-            markingType={'simple'}
+           markingType={'dot'}
             markedDates={marked}
             style={styles.calendar}
             theme={{
@@ -74,9 +109,15 @@ export default function CalendarBillScreen() {
         <View style={styles.billContainer}>
           <Text style={styles.billTitle}>Monthly Bill</Text>
           <View style={styles.billDetails}>
-            <Text style={styles.billText}>Deliveries: <Text style={styles.billValue}>26</Text></Text>
-            <Text style={styles.billText}>Price/Delivery: <Text style={styles.billValue}>₹45</Text></Text>
-            <Text style={styles.billTotal}>Total: <Text style={styles.billValue}>₹1170</Text></Text>
+            <Text style={styles.billText}>
+              Deliveries: <Text style={styles.billValue}>26</Text>
+            </Text>
+            <Text style={styles.billText}>
+              Price/Delivery: <Text style={styles.billValue}>₹45</Text>
+            </Text>
+            <Text style={styles.billTotal}>
+              Total: <Text style={styles.billValue}></Text>
+            </Text>
           </View>
 
           <TouchableOpacity

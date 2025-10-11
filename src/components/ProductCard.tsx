@@ -64,7 +64,7 @@ export default function ProductCard({ item, onPress, onSubscribe }: ProductCardP
           <TouchableOpacity
             onPress={() => {
               onSubscribe(item);
-              navigation.navigate('Subscribepage', { product: item });
+              navigation.navigate('Subscribe', { product: item });
             }}
             style={styles.subscribeBtn}
           >

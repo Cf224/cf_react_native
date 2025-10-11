@@ -144,29 +144,27 @@ React.useEffect(() => {
     }
 
     const totalAmount = product.price * parseQuantity(quantity);
-    const AMOUNT = totalAmount.toFixed(2); 
     const VPA = 'arunganapathi20-3@okicici'; // Replace with your real UPI ID
     const NAME = 'CHINNA FARMING';
-    const TXNID = `T${Date.now()}`;
+    const TXNID = `TXN${Date.now()}`;
     const TR = `TR${Date.now()}`;
     const NOTE = `Payment for ${product.name} (${quantity})`;
+    const AMOUNT = totalAmount.toFixed(2);
+    const CALLBACK_URL = 'myapp://upi-response';
+ const upiUrl = `upi://pay?pa=${VPA}&pn=${encodeURIComponent(
+      NAME
+    )}&tid=${TXNID}&tr=${TR}&tn=${encodeURIComponent(NOTE)}&am=${AMOUNT}&cu=INR&url=${encodeURIComponent(
+      CALLBACK_URL
+    )}`;
 
-  const upiUrl = `upi://pay?pa=${VPA}&pn=${encodeURIComponent(NAME)}&tid=${TXNID}&tr=${TR}&tn=${encodeURIComponent(
-  NOTE
-)}&am=${AMOUNT}&cu=INR`;
 
-
+   
     try {
-      const supported = await Linking.canOpenURL(app.scheme);
+      const supported = await Linking.canOpenURL(`${app.scheme}://`);
       if (supported) {
         await Linking.openURL(upiUrl);
-        Alert.alert(
-          'Complete Payment',
-          'After finishing payment in your UPI app, return here and tap OK.',
-          [{ text: 'OK' }]
-        );
       } else {
-        Alert.alert('Error', `${app.name} not available on this device.`);
+        Alert.alert('Error', `${app.name} is not installed on your device.`);
       }
     } catch (error) {
       console.error('UPI Error:', error);
@@ -174,19 +172,21 @@ React.useEffect(() => {
     }
   };
 
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      console.log('UPI Response:', url);
-      if (url.toLowerCase().includes('status=success')) {
-        Alert.alert('✅ Payment Successful', 'Thank you for your payment!');
-      } else if (url.toLowerCase().includes('status=failure')) {
-        Alert.alert('❌ Payment Failed', 'Please try again.');
-      } else if (url.toLowerCase().includes('status=submitted')) {
-        Alert.alert('⏳ Payment Pending', 'Waiting for confirmation.');
-      }
-    });
-    return () => subscription.remove();
-  }, []);
+useEffect(() => {
+  const subscription = Linking.addEventListener('url', ({ url }) => {
+    console.log('UPI Response:', url);
+
+    if (url.toLowerCase().includes('status=success')) {
+      Alert.alert('✅ Payment Successful');
+    } else if (url.toLowerCase().includes('status=failure')) {
+      Alert.alert('❌ Payment Failed');
+    } else {
+      Alert.alert('⏳ Payment Pending');
+    }
+  });
+  return () => subscription.remove();
+}, []);
+
 
   const handleConfirmPayment = () => {
     if (!selectedPayment) {
